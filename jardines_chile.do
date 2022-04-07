@@ -55,6 +55,7 @@ replace nom_estab = upper(nom_estab)
 
 replace nom_reg_estab = "REGIÓN DE TARAPACÁ" if nom_reg_estab == "REGIÓN DE TARAPACÁ "
 * --- arreglar nombres
+replace nom_estab = trim(nom_estab)
 replace nom_estab = subinstr(nom_estab, "ñ", "Ñ",.)
 replace nom_estab = subinstr(nom_estab, "ã‘", "Ñ",.)
 replace nom_estab = subinstr(nom_estab, "á", "A",.)
@@ -65,11 +66,19 @@ replace nom_estab = subinstr(nom_estab, "ú", "U",.)
 replace nom_estab = subinstr(nom_estab, "ï", "I",.)
 replace nom_estab = subinstr(nom_estab, "ü", "U",.)
 replace nom_estab = subinstr(nom_estab, "ãš", "U",.)
+
 replace nom_estab = subinstr(nom_estab, "PMI ", "",.)
+
 replace nom_estab = subinstr(nom_estab, "  ", " ",.)
 replace nom_estab = subinstr(nom_estab, "Ã", "Ñ",.)
 replace nom_estab = subinstr(nom_estab, " - ", "-",.)
 replace nom_estab = subinstr(nom_estab, "-", " ",.)
+replace nom_estab = subinstr(nom_estab, "CASH ", "",.)
+replace nom_estab = subinstr(nom_estab, "CECI ", "",.)
+replace nom_estab = subinstr(nom_estab, "COIGUE", "COIHUE",.)
+replace nom_estab = subinstr(nom_estab, "VILLA LOS ANDES DE CACHAPOAL", "VILLA LOS ANDES CACHAPOAL",.)
+replace nom_estab = subinstr(nom_estab, "PEQUEÑAS SEMILLAS", "PEQUEÑAS SEMILLITAS",.)
+
 
 tempfile junji_municipales
 save `junji_municipales', replace //3,193
@@ -91,7 +100,8 @@ import delimited "$pathData/Schools/Preescolar/20211122_Resumen_Educacion_Parvul
 merge 1:1 id_estab origen using `aux', keepusing(latitud longitud dependencia cod_ense1_m cod_ense2_m)
 drop _merge //deberían pegar todos
 
-* --- arreglos nombres 
+* --- arreglos nombres
+replace nom_estab = trim(nom_estab)
 replace nom_estab = subinstr(nom_estab, " - ", "-",.)
 replace nom_estab = subinstr(nom_estab, "-", " ",.)
 replace nom_estab = subinstr(nom_estab, "  ", " ",.)
@@ -102,8 +112,20 @@ replace nom_estab = subinstr(nom_estab, "Ó", "O",.)
 replace nom_estab = subinstr(nom_estab, "Ú", "U",.)
 replace nom_estab = subinstr(nom_estab, "Ï", "I",.)
 replace nom_estab = subinstr(nom_estab, "Ü", "U",.)
+
 replace nom_estab = subinstr(nom_estab, "PMI ", "",.)
+
 replace nom_estab = subinstr(nom_estab, "PEQUENO", "PEQUEÑO",.)
+replace nom_estab = subinstr(nom_estab, "COIGUE", "COIHUE",.)
+replace nom_estab = subinstr(nom_estab, "DOMEYCO", "DOMEYKO",.)
+replace nom_estab = subinstr(nom_estab, "CASH ", "",.)
+replace nom_estab = subinstr(nom_estab, "CECI ", "",.)
+replace nom_estab = subinstr(nom_estab, "NUEVA ALDEA TRENCITO DE NUEVA", "NUEVA ALDEA TRENCITO DE NUEVA ALDEA",.)
+replace nom_estab = subinstr(nom_estab, "SUEÑO DE NIÑOS", "SUEÑOS DE NIÑOS",.)
+replace nom_estab = subinstr(nom_estab, "AROMITOS", "LOS AROMITOS",.)
+replace nom_estab = subinstr(nom_estab, "RABITO, SUEÑO DE ARTISTAS", "RABITO, SUEÑOS DE ARTISTA",.)
+replace nom_estab = subinstr(nom_estab, "ÑUKE MAPU", "ÑUKE MAPU DE QUILVO",.)
+
 
 * --- pegar listado jardines
 merge m:1 id_estab nom_estab using `junji_municipales', update //pegan 3163
@@ -129,6 +151,8 @@ foreach level in sc_men sc_may med_men med_may nt1 nt2 {
 }
 
 gen urban =(rural_estab==0)
+replace urban = . if rural_estab==.
+
 keep id_estab nom_estab cod_ense cod_com_estab cod_pro_estab cod_reg_estab mat_nt2 mat_nt1 mat_med_may mat_sc_may mat_sc_men latitud longitud dependencia origen urban
 /*agregar codigos a regiones con nombre y sin codigo */
 *rename (rbd cod_region cod_pro_estab cod_comuna dependencia nom_estab nom_reg_a_estab nom_pro_estab nom_com_estab)(institution_code geo_region geo_provincia geo_comuna type_prek school_name geo_region_name geo_provincia_name geo_comuna_name)
@@ -136,7 +160,26 @@ duplicates tag id_estab origen, g(dup)
 sort id_estab origen
 br if dup>0
 
+replace nom_estab = subinstr(nom_estab, "PMI ", "",.)
+collapse (firstnm) urban mat_* latitud longitud cod_com_estab cod_pro_estab, by(id_estab nom_estab origen)
 
+duplicates tag id_estab origen, g(dup)
+sort id_estab origen
+
+global aux_list1 " "4103012", "4301080", "4301881", "5703009", "6101015", "6104001", "6115003", "6301004", "7407012" "
+global aux_list2 " "8201018", "9101096", "9101097", "9101100", "9102030", "9105033", "9112047", "9202010", "9205017" "
+global aux_list3 " "12201004", "12301004", "13102019", "13106029", "13116018", "13121028", "13122058", "13124034" "
+global aux_list4 " "13126021", "13303032", "13402037", "13601016" "
+
+tostring id_estab, replace 
+gen flag = 1 if dup>0
+replace flag = . if inlist(id_estab,$aux_list1 ) | inlist(id_estab,$aux_list2 ) | inlist(id_estab,$aux_list3 ) | inlist(id_estab,$aux_list4 )
+destring id_estab, replace 
+
+sort id_estab origen mat_sc_men, stable 
+
+bys id_estab origen: drop if dup>0 & flag == 1 & _n==1
+br if dup>0
 
 stop
 //institution_code para aquellas instituciones que tienen id junji e integra (no tienen rbd)
