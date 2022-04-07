@@ -69,6 +69,7 @@ replace nom_estab = subinstr(nom_estab, "PMI ", "",.)
 replace nom_estab = subinstr(nom_estab, "  ", " ",.)
 replace nom_estab = subinstr(nom_estab, "Ã", "Ñ",.)
 replace nom_estab = subinstr(nom_estab, " - ", "-",.)
+replace nom_estab = subinstr(nom_estab, "-", " ",.)
 
 tempfile junji_municipales
 save `junji_municipales', replace //3,193
@@ -89,6 +90,20 @@ save `aux'
 import delimited "$pathData/Schools/Preescolar/20211122_Resumen_Educacion_Parvularia_por_EE_2021_20210831.csv", clear
 merge 1:1 id_estab origen using `aux', keepusing(latitud longitud dependencia cod_ense1_m cod_ense2_m)
 drop _merge //deberían pegar todos
+
+* --- arreglos nombres 
+replace nom_estab = subinstr(nom_estab, " - ", "-",.)
+replace nom_estab = subinstr(nom_estab, "-", " ",.)
+replace nom_estab = subinstr(nom_estab, "  ", " ",.)
+replace nom_estab = subinstr(nom_estab, "Á", "A",.)
+replace nom_estab = subinstr(nom_estab, "É", "E",.)
+replace nom_estab = subinstr(nom_estab, "Í", "I",.)
+replace nom_estab = subinstr(nom_estab, "Ó", "O",.)
+replace nom_estab = subinstr(nom_estab, "Ú", "U",.)
+replace nom_estab = subinstr(nom_estab, "Ï", "I",.)
+replace nom_estab = subinstr(nom_estab, "Ü", "U",.)
+replace nom_estab = subinstr(nom_estab, "PMI ", "",.)
+replace nom_estab = subinstr(nom_estab, "PEQUENO", "PEQUEÑO",.)
 
 * --- pegar listado jardines
 merge m:1 id_estab nom_estab using `junji_municipales', update //pegan 3163
