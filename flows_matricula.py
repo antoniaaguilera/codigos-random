@@ -40,9 +40,3 @@ plot.write_html("/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@co
 # If you need to save this file as a standalong html file:
 #fig.write_html("/Volumes/GoogleDrive-106163685978679026504/.shortcut-targets-by-id/1flx2_T-4zb07TPZH6ge-VlnO1_2eiIeR/ConsiliumBots/1_Projects/4_DFM/DFM Chile/Entregables/rutas_educacion.html")
 plot.write_image("/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@consiliumbots.com/output_random/enrollment_flows.png")
-
-	flag	mrun
-1	1	419781
-2	2	42518
-3	3	181272
-4	4	98128
