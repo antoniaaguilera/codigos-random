@@ -233,15 +233,16 @@ tempfile contact
 save `contact'
 
 * --- pegar info de jardines que ya tenemos 
-import delimited "$pathDataExplorador/latest_from_back/cb_explorer_chile_institutions_contact.csv", clear 
+
+import delimited "$pathDataExplorador/latest_from_back/cb_explorer_chile_institutions_contact.csv", clear charset(utf8) delimiter(",")
 drop name
 keep if contact_label_id == 1
 tostring institution_code, replace 
 bys institution_code: keep if _n==1
 
 merge 1:1 institution_code using `contact'
-drop if _merge==1
-drop _merge 
+*drop if _merge==1
+*drop _merge 
 
 replace mail = email if mail==""
 format phone %30.0g
