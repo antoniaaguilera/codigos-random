@@ -27,6 +27,7 @@ display "`c(username)'"
   if "`c(username)'"=="antoniaaguilera" { // Antonia
     global pathData =  "/Users/antoniaaguilera/ConsiliumBots Dropbox/Schooling_Markets/Schooling_Markets_Chile"
 	global pathDataExplorador =  "/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@consiliumbots.com/Explorador_Chile/E_Escolar/"
+	global pathRandom = "/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@consiliumbots.com/data_random"
   }
 
   if "`c(username)'"=="ij1376" { // Isa
@@ -186,7 +187,7 @@ sort id_estab origen
 
 * --- conservar nombre junji y datos mineduc 
 gsort id_estab origen base
-collapse (firstnm)phone mail address dup dependencia sector_label_id nom_estab urban mat_* latitud longitud cod_com_estab cod_pro_estab cod_reg_estab, by(id_estab origen)
+collapse (firstnm)base phone mail address dup dependencia sector_label_id nom_estab urban mat_* latitud longitud cod_com_estab cod_pro_estab cod_reg_estab, by(id_estab origen)
 
 * --- id integra 
 tostring id_estab origen, replace 
@@ -208,9 +209,12 @@ gen matricula_preescolar = mat_med_may + mat_nt1 + mat_nt2 + mat_sc_may + mat_sc
 
 gen preescolar = 1
 
+merge m:1 geo_comuna using "$pathRandom/codigos_geo.dta"
+
 preserve
 keep institution_code school_name type urban latitud longitud geo_region geo_provincia geo_comuna matricula_preescolar preescolar //geo_region_name geo_provincia_name geo_comuna_name
 order institution_code school_name type urban latitud longitud geo_region geo_provincia geo_comuna matricula_preescolar preescolar //geo_region_name geo_provincia_name geo_comuna_name
+
 export delimited "$pathDataExplorador/inputs/JARDINES/base_jardines.csv", replace 
 restore 
 }
@@ -218,23 +222,27 @@ restore
 * ============================================================= *
 * ======================= CONTACTO JUNJI ====================== *
 * ============================================================= *
+
 split phone, generate(phone2)
 drop phone21 phone22 phone24 phone25 phone26 phone
 rename (phone27 phone23) (phone_2 phone_1)
 
-keep institution_code school_name type latitud longitud address phone_1 phone_2 mail
+keep institution_code school_name type latitud longitud address phone_1 phone_2 mail geo_comuna geo_region geo_comuna_name geo_region_name base 
 
 tempfile contact
 save `contact'
 
 * --- pegar info de jardines que ya tenemos 
 import delimited "$pathDataExplorador/latest_from_back/cb_explorer_chile_institutions_contact.csv", clear 
+drop name
 keep if contact_label_id == 1
 tostring institution_code, replace 
 bys institution_code: keep if _n==1
+
 merge 1:1 institution_code using `contact'
-keep if _merge == 3
-drop _merge //quiero los mismos que ya tengo, solo quiero completar la info (dsps agregar privados)
+drop if _merge==1
+drop _merge 
+
 replace mail = email if mail==""
 format phone %30.0g
 destring phone* , replace
@@ -242,10 +250,10 @@ replace phone_1 = phone if phone_1 == .
 replace phone_2 = cellphone if phone_2 == .
 
 format phone_1 phone_2 %30.0g
-
-tempfile junji
-save `junji', replace 
-
+ 
+tempfile todos_ee
+save `todos_ee', replace 
+ 
 * ============================================================= *
 * ================== BASE PRIVADOS SCRAPPEADA ================= *
 * ============================================================= *
@@ -269,14 +277,67 @@ replace telfono = subinstr(telfono, "|", " ",.)
 split telfono, generate(phone_)
 destring phone_*, replace 
 
-keep if establecimiento == "Particular"
-rename(nombre direccion)(school_name address)
-keep school_name latitud longitud address phone_1 phone_2 
+replace ubicacin = subinstr(ubicacin, "RM / ", "",.)
+replace ubicacin = subinstr(ubicacin, " / RM", "",.)
+replace ubicacin = upper(ubicacin)
+replace ubicacin = subinstr(ubicacin, "ñ", "Ñ",.)
+replace ubicacin = subinstr(ubicacin, "á", "A",.)
+replace ubicacin = subinstr(ubicacin, "é", "E",.)
+replace ubicacin = subinstr(ubicacin, "í", "I",.)
+replace ubicacin = subinstr(ubicacin, "ó", "O",.)
+replace ubicacin = subinstr(ubicacin, "ú", "U",.)
+replace ubicacin = subinstr(ubicacin, "ï", "I",.)
+replace ubicacin = subinstr(ubicacin, "ü", "U",.)
 
+keep if establecimiento == "Particular"
+rename(nombre direccion ubicacin)(school_name address geo_comuna_name)
+keep school_name latitud longitud address phone_1 phone_2 geo_comuna_name
 
 gen type = 3
+gen geo_region = 13 //son solo RM
+gen base ="privados"
+replace geo_comuna_name = "SANTIAGO" if school_name=="VITAMINA SAN FRANCISCO"
+merge m:1 geo_comuna_name using "$pathRandom/codigos_geo.dta"
+keep if _merge ==3 
+drop _merge 
 
-append using `junji'
-stop
-export delimited "$pathDataExporador/inputs/contacto_jardines.csv", replace 
+append using `todos_ee'
+
+tempfile privados
+save `privados'
+
+
+* ============================================================= *
+* ================== BASE INTEGRA SCRAPPEADA ================= *
+* ============================================================= *
+import delimited "$pathDataExplorador/inputs/JARDINES/integra.csv", clear charset(utf8)
+gen type = 8
+gen base ="integra"
+rename (nombre coord_* direccion correo telefono comuna)(school_name * address mail phone_1 geo_comuna_name)
+keep school_name latitud longitud address mail phone_1 geo_comuna_name type base
+replace geo_comuna_name =strtrim(geo_comuna_name)
+replace geo_comuna_name = subinstr(geo_comuna_name, "ñ", "Ñ",.)
+replace geo_comuna_name = subinstr(geo_comuna_name, "Á", "A",.)
+replace geo_comuna_name = subinstr(geo_comuna_name, "É", "E",.)
+replace geo_comuna_name = subinstr(geo_comuna_name, "Í", "I",.)
+replace geo_comuna_name = subinstr(geo_comuna_name, "Ó", "O",.)
+replace geo_comuna_name = subinstr(geo_comuna_name, "Ú", "U",.)
+
+replace geo_comuna_name = "YERBAS BUENAS" if geo_comuna_name =="YERBA BUENA"
+replace geo_comuna_name = "TREHUACO" if geo_comuna_name =="TREGUACO"
+replace geo_comuna_name = "PUQUELDON" if geo_comuna_name =="PULQUEDON"
+replace geo_comuna_name = "O'HIGGINS" if geo_comuna_name =="OHIGGINS"
+replace geo_comuna_name = "PUQUELDON" if geo_comuna_name =="PULQUEDON"
+replace geo_comuna_name = "ERCILLA" if geo_comuna_name==""
+
+merge m:1 geo_comuna_name using "$pathRandom/codigos_geo.dta"
+keep if _merge ==3
+drop _merge 
+
+append using `privados'
+
+keep institution_code school_name address geo_comuna_name geo_comuna geo_region latitud longitud  phone_1 phone_2 email  type base webpage
+order institution_code school_name address geo_comuna_name geo_comuna geo_region latitud longitud  phone_1 phone_2 email  type base webpage
+format phone_* %30.0g
+export delimited "$pathDataExplorador/inputs/contacto_jardines.csv", replace 
 
