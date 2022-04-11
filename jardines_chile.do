@@ -463,4 +463,4 @@ tab type_label base
 replace base = "base " + base
 order institution_code school_name type type_label base geo_comuna geo_comuna_name geo_region latitud longitud address phone_1 phone_2 email webpage  esta_duplicado
 
-export delimited "$pathDataExplorador/inputs/contacto_jardines.csv", replace
+export delimited "$pathDataExplorador/inputs/JARDINES/contacto_jardines.csv", replace
