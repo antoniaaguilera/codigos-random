@@ -295,6 +295,7 @@ keep school_name latitud longitud address phone_1 phone_2 geo_comuna_name
 
 gen type = 3
 gen geo_region = 13 //son solo RM
+
 gen base ="privados"
 replace geo_comuna_name = "SANTIAGO" if school_name=="VITAMINA SAN FRANCISCO"
 merge m:1 geo_comuna_name using "$pathRandom/codigos_geo.dta"
@@ -339,5 +340,25 @@ append using `privados'
 keep institution_code school_name address geo_comuna_name geo_comuna geo_region latitud longitud  phone_1 phone_2 email  type base webpage
 order institution_code school_name address geo_comuna_name geo_comuna geo_region latitud longitud  phone_1 phone_2 email  type base webpage
 format phone_* %30.0g
+
+bys school_name latitud longitud: egen max_lat=max(lat)
+bys school_name latitud longitud: egen max_lon=max(lon)
+
+collapse (firstnm) address phone_1 phone_2 email base webpage institution_code geo_comuna geo_comuna_name geo_region , by(school_name max_lat max_lon type)
+
+rename (max_lat max_lon)(latitud longitud)
+
+duplicates tag school_name geo_comuna_name geo_region type, gen(duplicado)
+gen esta_duplicado = (duplicado>0)
+drop duplicado 
+
 export delimited "$pathDataExplorador/inputs/contacto_jardines.csv", replace 
+
+
+
+
+
+
+
+
 
