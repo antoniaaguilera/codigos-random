@@ -32,9 +32,10 @@ display "`c(username)'"
 
   if "`c(username)'"=="ij1376" { // Isa
     global pathData =  "C:/Users/ij1376/ConsiliumBots Dropbox/Schooling_Markets/Schooling_Markets_Chile"
-	global pathDataExplorador =  "C/Users/ij1376/ConsiliumBots Dropbox/Isabel Jacas/Exploradores/Explorador_Chile/E_Escolar/"
+	global pathDataExplorador =  "C:/Users/ij1376/ConsiliumBots Dropbox/Isabel Jacas/Exploradores/Explorador_Chile/E_Escolar/"
+  global pathRandom = "C:/Users/ij1376/ConsiliumBots Dropbox/Isabel Jacas/data/"
   }
-  
+
 {
 * ============================================================= *
 * ================== LISTADO JARDINES PUBLICOS ================ *
@@ -85,7 +86,7 @@ replace nom_estab = subinstr(nom_estab, "PEQUEÑAS SEMILLAS", "PEQUEÑAS SEMILLI
 
 gen base = "junjilistado"
 
-* --regiones 
+* --regiones
 gen cod_reg_estab = .
 replace cod_reg_estab = 1	if nom_reg_estab == "REGIÓN DE TARAPACÁ"
 replace cod_reg_estab = 2 	if nom_reg_estab == "REGIÓN DE ANTOFAGASTA"
@@ -185,12 +186,12 @@ collapse (firstnm) phone mail address dependencia sector_label_id base urban mat
 duplicates tag id_estab origen, g(dup)
 sort id_estab origen
 
-* --- conservar nombre junji y datos mineduc 
+* --- conservar nombre junji y datos mineduc
 gsort id_estab origen base
 collapse (firstnm)base phone mail address dup dependencia sector_label_id nom_estab urban mat_* latitud longitud cod_com_estab cod_pro_estab cod_reg_estab, by(id_estab origen)
 
-* --- id integra 
-tostring id_estab origen, replace 
+* --- id integra
+tostring id_estab origen, replace
 replace id_estab = id_estab + "-I" if origen =="3"
 duplicates report id_estab
 
@@ -199,24 +200,25 @@ tab dependencia
 replace sector_label_id = 1 if dependencia == 1 //municipal->público
 replace sector_label_id = 2 if dependencia == 2 //subvencionado
 replace sector_label_id = 3 if dependencia == 3 //particular
-replace sector_label_id = 5 if dependencia == 6 //servicio local 
+replace sector_label_id = 5 if dependencia == 6 //servicio local
 replace sector_label_id = 7 if dependencia == 4 | origen == "2" //junji
 replace sector_label_id = 8 if dependencia == 5 | origen == "3" //integra
 
-rename (id_estab nom_estab sector_label_id cod_reg_estab cod_pro_estab cod_com_estab) (institution_code school_name type geo_region geo_provincia geo_comuna) 
+rename (id_estab nom_estab sector_label_id cod_reg_estab cod_pro_estab cod_com_estab) (institution_code school_name type geo_region geo_provincia geo_comuna)
 
 gen matricula_preescolar = mat_med_may + mat_nt1 + mat_nt2 + mat_sc_may + mat_sc_men
 
 gen preescolar = 1
 
 merge m:1 geo_comuna using "$pathRandom/codigos_geo.dta"
+drop if _merge == 2
 
 preserve
 keep institution_code school_name type urban latitud longitud geo_region geo_provincia geo_comuna matricula_preescolar preescolar //geo_region_name geo_provincia_name geo_comuna_name
 order institution_code school_name type urban latitud longitud geo_region geo_provincia geo_comuna matricula_preescolar preescolar //geo_region_name geo_provincia_name geo_comuna_name
 
-export delimited "$pathDataExplorador/inputs/JARDINES/base_jardines.csv", replace 
-restore 
+export delimited "$pathDataExplorador/inputs/JARDINES/base_jardines.csv", replace
+restore
 }
 
 * ============================================================= *
@@ -227,22 +229,103 @@ split phone, generate(phone2)
 drop phone21 phone22 phone24 phone25 phone26 phone
 rename (phone27 phone23) (phone_2 phone_1)
 
-keep institution_code school_name type latitud longitud address phone_1 phone_2 mail geo_comuna geo_region geo_comuna_name geo_region_name base 
+keep institution_code school_name type latitud longitud address phone_1 phone_2 mail geo_comuna geo_region geo_comuna_name geo_region_name base
 
 tempfile contact
 save `contact'
 
-* --- pegar info de jardines que ya tenemos 
+* --- pegar info de jardines que ya tenemos
+import delimited "$pathDataExplorador/latest_from_back/cb_explorer_chile_places_location.csv", clear charset(utf8) delimiter(",")
+keep if label_subdivision == "Region"
+tempfile region
+save `region'
+
+import delimited "$pathDataExplorador/latest_from_back/cb_explorer_chile_places_location.csv", clear charset(utf8) delimiter(",")
+keep if label_subdivision == "Provincia"
+rename id pid
+rename upper_location_id id
+rename (name code_national) (geo_provincia_name geo_provincia)
+keep pid geo_provincia* id
+merge m:1 id using `region'
+drop id
+rename pid id
+keep id name code_national
+rename (name code_national) (geo_region_name geo_region)
+tempfile provregion
+save `provregion'
+
+
+import delimited "$pathDataExplorador/latest_from_back/cb_explorer_chile_places_location.csv", clear charset(utf8) delimiter(",")
+rename id pid
+rename upper_location_id id
+rename (name code_national) (geo_comuna_name geo_comuna)
+keep if label_subdivision == "Comuna"
+keep pid geo_comuna* id
+merge m:1 id using `provregion'
+keep pid geo_comuna geo_comuna_name geo_region geo_region_name
+rename pid plocation_id
+tempfile plocation
+save `plocation'
+
+
+import delimited "$pathDataExplorador/latest_from_back/cb_explorer_chile_institutions_location.csv", clear charset(utf8) delimiter(",")
+merge m:1 plocation_id using `plocation'
+keep latitud longitud institution_code campus_code geo*
+sort institution_code campus_code
+bys institution_code: keep if _n == 1
+drop campus_code
+tempfile location
+save `location'
+
+import delimited "$pathDataExplorador/latest_from_back/cb_explorer_chile_institutions_campus.csv", clear charset(utf8) delimiter(",")
+keep institution_code sector_id
+duplicates drop institution_code, force
+rename sector_id type
+
+tempfile type
+save `type'
+
+
+
+import delimited "$pathDataExplorador/latest_from_back/cb_explorer_chile_institutions_institutions.csv", clear charset(utf8) delimiter(",")
+merge 1:1 institution_code using `type'
+drop _merge
+
+keep if grade_max == "Atención Temprana" | grade_max == "Kinder (Nivel de Transición 2)" | grade_max == "Nivel Medio Heterogéneo" | grade_max == "Nivel Medio Mayor" | grade_max == "Nivel Medio Menor" | grade_max == "Nivel Transición Heterogéneo" | grade_max == "Nivel de Transición 1" | grade_max == "Nivel de Transición 2" | grade_max == "Parvularia Heterogéneo" | grade_max == "PreKinder (Nivel de Transición 1)" | grade_max == "Sala Cuna Heterogéneo" | ///
+ grade_max == "Sala Cuna Mayor" | grade_max == "Sala Cuna Menor" | grade_max == "Sin Información"
+tab grade_max grade_min
+drop if grade_min == "1° básico" | grade_min == "2° básico"  | grade_min == "3° básico" | grade_min == "4° básico" | grade_min == "6° básico" | grade_min == "7° básico" | grade_min == "Laboral 1"
+
+merge 1:1 institution_code using `location'
+drop if _merge == 2
+drop _merge
+keep institution_name institution_code latitud longitud geo* type
+tempfile names
+save `names'
 
 import delimited "$pathDataExplorador/latest_from_back/cb_explorer_chile_institutions_contact.csv", clear charset(utf8) delimiter(",")
 drop name
-keep if contact_label_id == 1
-tostring institution_code, replace 
-bys institution_code: keep if _n==1
+merge m:1 institution_code using `names'
+drop if _merge == 1
+drop _merge
 
-merge 1:1 institution_code using `contact'
+keep if contact_label_id == 1
+tostring institution_code, replace
+sort institution_code campus_code
+bys institution_code: keep if _n==1
+gen base = "explorador (mineduc)"
+
+
+merge 1:1 institution_code using `contact', update
+replace school_name = institution_name if institution_name != "" & school_name == ""
+drop institution_name
+drop _merge
+
+sort institution_code
+order institution_code
+drop id
 *drop if _merge==1
-*drop _merge 
+*drop _merge
 
 replace mail = email if mail==""
 format phone %30.0g
@@ -251,10 +334,11 @@ replace phone_1 = phone if phone_1 == .
 replace phone_2 = cellphone if phone_2 == .
 
 format phone_1 phone_2 %30.0g
- 
+drop phone cellphone
+replace mail = "" if mail == "@"
 tempfile todos_ee
-save `todos_ee', replace 
- 
+save `todos_ee', replace
+
 * ============================================================= *
 * ================== BASE PRIVADOS SCRAPPEADA ================= *
 * ============================================================= *
@@ -276,7 +360,7 @@ replace telfono = subinstr(telfono, "-", "",.)
 replace telfono = subinstr(telfono, "NoRegistraTeléfono", "",.)
 replace telfono = subinstr(telfono, "|", " ",.)
 split telfono, generate(phone_)
-destring phone_*, replace 
+destring phone_*, replace
 
 replace ubicacin = subinstr(ubicacin, "RM / ", "",.)
 replace ubicacin = subinstr(ubicacin, " / RM", "",.)
@@ -300,8 +384,8 @@ gen geo_region = 13 //son solo RM
 gen base ="privados"
 replace geo_comuna_name = "SANTIAGO" if school_name=="VITAMINA SAN FRANCISCO"
 merge m:1 geo_comuna_name using "$pathRandom/codigos_geo.dta"
-keep if _merge ==3 
-drop _merge 
+keep if _merge ==3
+drop _merge
 
 append using `todos_ee'
 
@@ -334,7 +418,7 @@ replace geo_comuna_name = "ERCILLA" if geo_comuna_name==""
 
 merge m:1 geo_comuna_name using "$pathRandom/codigos_geo.dta"
 keep if _merge ==3
-drop _merge 
+drop _merge
 
 append using `privados'
 
@@ -351,15 +435,32 @@ rename (max_lat max_lon)(latitud longitud)
 
 duplicates tag school_name geo_comuna_name geo_region type, gen(duplicado)
 gen esta_duplicado = (duplicado>0)
-drop duplicado 
+drop duplicado
 
-export delimited "$pathDataExplorador/inputs/contacto_jardines.csv", replace 
+gen type_label = "Público" if type == 1
+replace type_label = "Particular Subvencionado" if type == 2
+replace type_label = "Particular Pagado" if type == 3
+replace type_label = "Corporación de Administración Delegada" if type == 4
+replace type_label = "Servicio Local de Educación" if type == 5
+replace type_label = "Sin Información" if type == 6
+replace type_label = "JUNJI" if type == 7
+replace type_label = "Integra" if type == 8
+
+replace school_name = upper(school_name)
+replace school_name = subinstr(school_name, "ñ", "Ñ",.)
+replace school_name = subinstr(school_name, "á", "A",.)
+replace school_name = subinstr(school_name, "é", "E",.)
+replace school_name = subinstr(school_name, "í", "I",.)
+replace school_name = subinstr(school_name, "ó", "O",.)
+replace school_name = subinstr(school_name, "ú", "U",.)
+replace school_name = subinstr(school_name, "ï", "I",.)
+replace school_name = subinstr(school_name, "ü", "U",.)
 
 
+tab base
+tab type_label base
 
+replace base = "base " + base
+order institution_code school_name type type_label base geo_comuna geo_comuna_name geo_region latitud longitud address phone_1 phone_2 email webpage  esta_duplicado
 
-
-
-
-
-
+export delimited "$pathDataExplorador/inputs/contacto_jardines.csv", replace
