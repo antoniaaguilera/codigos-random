@@ -16,8 +16,11 @@ schools = sortrows(schools,'postulantes','descend');
 
 nozeros = schools(schools.postulantes>0,:);
 
+
 figure
-b = bar([1:size(nozeros,1)],[nozeros.postulantes]);
+b = bar(find(nozeros.perfildigital == 1),[nozeros.postulantes(nozeros.perfildigital == 1)]);
+hold on
+bs = bar(find(nozeros.perfildigital == 0),[nozeros.postulantes(nozeros.perfildigital == 0)]);
 hold on
 b1 = bar(find(nozeros.rbd == 26352),nozeros.postulantes(find(nozeros.rbd == 26352)));
 grid
@@ -26,28 +29,14 @@ xticklabels({})
 box off
 
 
-prek = readtable([pathData 'para_andrea/colegio_26352_prek.csv']);
-prek = sortrows(prek,'postulantes','descend');
-nozerosprek = prek(prek.postulantes>0,:);
-
-figure
-b = bar([1:size(nozerosprek,1)],[nozerosprek.postulantes]);
-hold on
-b1 = bar(find(nozerosprek.rbd == 26352),nozerosprek.postulantes(find(nozerosprek.rbd == 26352)));
-grid
-ylabel('Número de Postulantes entre PreK y 8vo Básico')
-xticklabels({})
-box off
-
-
-
-
 schools = sortrows(schools,'clicks_card','descend');
 nozeros = schools(schools.clicks_card>0,:);
 
 
 figure
-b = bar([1:size(nozeros,1)],[nozeros.clicks_card]);
+b = bar(find(nozeros.perfildigital == 1),[nozeros.clicks_card(nozeros.perfildigital == 1)]);
+hold on
+bs = bar(find(nozeros.perfildigital == 0),[nozeros.clicks_card(nozeros.perfildigital == 0)]);
 hold on
 b1 = bar(find(nozeros.rbd == 26352),nozeros.clicks_card(find(nozeros.rbd == 26352)));
 grid
@@ -62,7 +51,9 @@ nozeros = schools(schools.clicks_profile>0,:);
 
 
 figure
-b = bar([1:size(nozeros,1)],[nozeros.clicks_profile]);
+b = bar(find(nozeros.perfildigital == 1),[nozeros.clicks_profile(nozeros.perfildigital == 1)]);
+hold on
+bs = bar(find(nozeros.perfildigital == 0),[nozeros.clicks_profile(nozeros.perfildigital == 0)]);
 hold on
 b1 = bar(find(nozeros.rbd == 26352),nozeros.clicks_profile(find(nozeros.rbd == 26352)));
 grid
@@ -79,3 +70,29 @@ histogram([table2array(post(:,2))])
 
 
 
+
+%% Pins y Profiles
+colorsT = [0.45,0.91,0.77 ; 0.28,0.66,0.65];
+
+pps = readtable([pathData '/para_andrea/grafico_perfildigital.csv']);
+pps = table2struct(pps);
+
+toplot = zeros(2,3);
+toplot(1,1) = 0;
+toplot(2,1) = 1;
+
+toplot(1,2) = nanmean([pps([pps.perfildigital] == 0).pins]);
+toplot(2,2) = nanmean([pps([pps.perfildigital] == 1).pins]);
+
+toplot(1,3) = nanmean([pps([pps.perfildigital] == 0).profile]);
+toplot(2,3) = nanmean([pps([pps.perfildigital] == 1).profile]);
+
+figure
+b1 = bar(toplot(:,1),[toplot(:,2) toplot(:,3)]);
+legend('Clicks','Entradas a Perfil','Location','northwest')
+set(b1(1),'FaceColor',colorsT(2,:),'EdgeColor',colorsT(2,:),'FaceAlpha',0.5)
+set(b1(2),'FaceColor',colorsT(1,:),'EdgeColor',colorsT(1,:),'FaceAlpha',0.5)
+box on
+axis on
+legend boxoff
+grid
