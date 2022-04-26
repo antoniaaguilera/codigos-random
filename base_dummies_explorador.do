@@ -60,7 +60,7 @@ rename institution_code rbd
 
 tempfile religion
 save `religion'
-
+ 
 * --- contact --- *
 *import delimited "$pathExplorador/cb_explorer_chile_institutions_contact.csv", clear 
 import delimited "/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@consiliumbots.com/Explorador_Chile/E_Escolar/latest_to_back/institutions_contact.csv", clear
@@ -96,11 +96,13 @@ import delimited "/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@c
 gen nombre_director = name+" "+other_name+ " "+first_lastname+" "+other_lastname
 rename institution_code rbd
 keep rbd nombre_director
+drop if rbd==.
 merge 1:m rbd using `contact_aux'
 drop _merge
 tempfile contact
 save `contact', replace 
-
+*agregar telefono
+*reemplazar missings por cero 
 * --- images --- *
 import delimited "$pathExplorador/cb_explorer_chile_institutions_images.csv", clear 
 tostring campus_code, generate(rbd) format(%20.0g)
@@ -118,5 +120,6 @@ merge 1:m rbd using `contact'
 
 drop _merge 
 order rbd campus_code nombre_rbd 
-
+stop 
+drop if campus_code==.
 export excel "/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@consiliumbots.com/data_random/para_andrea/info_explorador.xlsx", replace firstrow(variables)
