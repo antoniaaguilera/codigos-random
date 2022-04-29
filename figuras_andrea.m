@@ -11,10 +11,13 @@ end
 
 %%
 
-schools = readtable([pathData 'para_andrea/colegio_26352.csv']);
+schools = readtable([pathData 'bases andrea_marcy/colegio_26352.csv']);
 schools = sortrows(schools,'postulantes','descend');
 
 nozeros = schools(schools.postulantes>0,:);
+
+nozeros.postulantes = nozeros.postulantes./nozeros.cupos_totales;
+nozeros = sortrows(nozeros,'postulantes','descend');
 
 
 figure
@@ -24,9 +27,11 @@ bs = bar(find(nozeros.perfildigital == 0),[nozeros.postulantes(nozeros.perfildig
 hold on
 b1 = bar(find(nozeros.rbd == 26352),nozeros.postulantes(find(nozeros.rbd == 26352)));
 grid
-ylabel('Número de Postulantes entre PreK y 8vo Básico')
+% ylabel('Número de Postulantes entre PreK y 8vo Básico')
+ylabel('Ratoi de Postulantes sobre Cupos entre PreK y 8vo Básico')
 xticklabels({})
 box off
+
 
 
 schools = sortrows(schools,'clicks_card','descend');
@@ -67,6 +72,33 @@ post = readtable([pathData 'para_andrea/postulantes_quintaNormal.csv']);
 
 figure
 histogram([table2array(post(:,2))])
+
+
+
+
+
+nozeros = schools(schools.cupos_remanentes>0,:);
+
+nozeros.cupos_remanentes = nozeros.cupos_remanentes./nozeros.cupos_totales;
+nozeros = sortrows(nozeros,'cupos_remanentes','ascend');
+
+
+figure
+b = bar(find(nozeros.perfildigital == 1),[nozeros.cupos_remanentes(nozeros.perfildigital == 1)],'BarWidth',0.4);
+hold on
+bs = bar(find(nozeros.perfildigital == 0),[nozeros.cupos_remanentes(nozeros.perfildigital == 0)]);
+hold on
+b1 = bar(find(nozeros.rbd == 26352),nozeros.cupos_remanentes(find(nozeros.rbd == 26352)));
+grid
+% ylabel('Número de Postulantes entre PreK y 8vo Básico')
+ylabel('Cupos remanentes (% del total) entre PreK y 8vo Básico')
+xticklabels({})
+legend('Con Perfil Digital','Sin Perfil Digital','Esc. Profesor Felix Alvarez','Location','northwest')
+box off
+
+
+
+
 
 
 
