@@ -17,7 +17,7 @@ display "`c(username)'"
     global pathData =  "/Users/antoniaaguilera/ConsiliumBots Dropbox/Schooling_Markets/Schooling_Markets_Chile/"
 	global pathDataExplorador =  "/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@consiliumbots.com/Explorador_Chile/E_Escolar/"
     global pathFromBack =  "/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@consiliumbots.com/Explorador_Chile/E_Escolar/latest_from_back"
-	global pathRandom = "/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@consiliumbots.com/data_random/"
+	global pathRandom = "/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@consiliumbots.com/random_data/"
   }
   
 * ============================================================ *
@@ -26,8 +26,8 @@ display "`c(username)'"
 
 * --- agregar dirección 
 import delimited "$pathFromBack/cb_explorer_chile_institutions_location.csv", clear
-keep institution_code address_street
-bys institution_code: keep if _n==1
+keep institution_code campus_code address_street
+*bys institution_code: keep if _n==1
 tempfile location
 save `location', replace 
 
@@ -41,7 +41,7 @@ drop phone5 phone6 cellphone5 cellphone6 email5 webpage2 webpage5 webpage6 name5
 
 rename (*1 *2 *6)(*_ofprincipal *_cepadres *_director)
 
-merge 1:1 institution_code using `location'
+merge 1:m institution_code using `location'
 drop _merge
 tempfile contact
 save `contact', replace 
@@ -54,7 +54,7 @@ rename rbd institution_code
 drop if mail_director == "@" 
 keep institution_code name_director mail_director
 * --- merge con contacts
-merge 1:1 institution_code using `contact', update
+merge 1:m institution_code using `contact', update
 drop _merge 
 replace email_director = mail_director if email_director == ""|email_director == " "
 
@@ -64,7 +64,7 @@ gen desde_explorador = 1
  
 tempfile contacto_explorador
 save `contacto_explorador', replace 
-
+ 
 * ============================================================ *
 * ======================= INFO DESDE JUNJI =================== *
 * ============================================================ *
@@ -237,7 +237,7 @@ replace edu_type = "Media Jóvenes y Media Adultos" if mat_parvularia == 0 & mat
 replace edu_type = "Párvulos, todo Básica, todo Media, Especial" if mat_parvularia > 0 & mat_basica_ninios > 0 & mat_basica_adultos > 0 & mat_especial > 0 & (mat_media_tp_jovenes > 0 | mat_media_ch_jovenes > 0)  & (mat_media_tp_adultos > 0  | mat_media_ch_adultos > 0 )  
 replace edu_type = "Párvulos, Básica Niños, todo Media, Especial" if mat_parvularia > 0 & mat_basica_ninios > 0 & mat_basica_adultos == 0 & mat_especial > 0 & (mat_media_tp_jovenes > 0 | mat_media_ch_jovenes > 0)  & (mat_media_tp_adultos > 0  | mat_media_ch_adultos > 0 )  
 
-merge 1:1 institution_code using `contacto_explorador'
+merge 1:m institution_code using `contacto_explorador'
 
 /*
  Result                      Number of obs
@@ -251,8 +251,8 @@ merge 1:1 institution_code using `contacto_explorador'
 
 */
 drop _merge 
- 
-merge 1:1 institution_code using `contacto_junji'
+
+merge m:1 institution_code using `contacto_junji'
 /*
  Result                      Number of obs
     -----------------------------------------
@@ -265,7 +265,7 @@ merge 1:1 institution_code using `contacto_junji'
 */
 drop _merge 
 
-merge 1:1 institution_code using `contacto_integra'
+merge m:1 institution_code using `contacto_integra'
 /*
  Result                      Number of obs
     -----------------------------------------
@@ -304,8 +304,8 @@ format phone* %30.0f
 drop geo_region* geo_provincia*
 merge m:1 geo_comuna using "$pathData/codigos_geo.dta", update
  
-keep institution_code school_name sector urban latitud longitud address_street geo* phone_ofprincipal* email_ofprincipal email_director name_director webpage* edu_type
-order institution_code school_name sector urban latitud longitud address_street geo* phone_ofprincipal* email_ofprincipal email_director name_director webpage* edu_type
+keep institution_code campus_code school_name sector urban latitud longitud address_street geo* phone_ofprincipal* email_ofprincipal email_director name_director webpage* edu_type
+order institution_code campus_code school_name sector urban latitud longitud address_street geo* phone_ofprincipal* email_ofprincipal email_director name_director webpage* edu_type
 
 gen facebook = .
 gen twitter = .
@@ -327,8 +327,14 @@ save `callcenter',replace
 import excel "$pathRandom/bases andrea_marcy/Muestra_solari_25042022.xlsx", clear first
 keep institution_code
 tostring institution_code,replace
-merge 1:1 institution_code using `callcenter'
+merge 1:m institution_code using `callcenter'
 
 gen solari_sample = (_merge==3)
 drop _merge  
+tostring campus_code, replace 
+* --- campus_code artificial --- *
+replace campus_code = institution_code+"00001" if campus_code=="."
+duplicates report campus_code
+duplicates report institution_code
+
 export delimited "$pathRandom/bases andrea_marcy/para_callcenter.csv", replace 
