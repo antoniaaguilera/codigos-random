@@ -332,9 +332,17 @@ merge 1:m institution_code using `callcenter'
 gen solari_sample = (_merge==3)
 drop _merge  
 tostring campus_code, replace 
+
+
 * --- campus_code artificial --- *
 replace campus_code = institution_code+"00001" if campus_code=="."
 duplicates report campus_code
 duplicates report institution_code
 
-export delimited "$pathRandom/bases andrea_marcy/para_callcenter.csv", replace 
+* --- n_sede --- *
+gen n_sede = substr(campus_code, -1,1)
+gen unos=1
+bys institution_code: egen n_tot_sede = count(1)
+drop unos
+sort institution_code campus_code
+export delimited "$pathRandom/bases andrea_marcy/callcenter/para_callcenter.csv", replace 
