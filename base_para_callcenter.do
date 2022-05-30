@@ -23,7 +23,7 @@ display "`c(username)'"
 * ============================================================ *
 * ==================== INFO DESDE EXPLORADOR ================= *
 * ============================================================ *
-
+/*
 * --- agregar dirección 
 import delimited "$pathFromBack/cb_explorer_chile_institutions_location.csv", clear
 keep institution_code campus_code address_street
@@ -346,3 +346,63 @@ bys institution_code: egen n_tot_sede = count(1)
 drop unos
 sort institution_code campus_code
 export delimited "$pathRandom/bases andrea_marcy/callcenter/para_callcenter.csv", replace 
+*/
+
+* =============================================== *
+* ==================== ARREGLOS ================= *
+* =============================================== *
+import delimited  "$pathFromBack/cb_explorer_chile_institutions_campus.csv", clear charset(utf8)
+tostring institution_code campus_code, replace 
+tempfile aux 
+save `aux', replace 
+
+import excel "/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@consiliumbots.com/random_data/bases andrea_marcy/callcenter/para_callcenter_20220519.xlsx", clear first
+*ver duplicados por nombre
+replace school_name = ustrtitle(school_name)
+merge 1:1 campus_code using `aux', keepusing(institution_code)
+
+duplicates tag school_name n_sede geo_region geo_comuna, g(dup)
+sort school_name geo_comuna geo_region 
+br campus_code institution_code school_name geo* _merge if dup>0
+
+* cuantos duplicados hay 
+bys school_name geo_region geo_comuna n_sede: egen cuantos_dup=count(campus_code) if dup>0
+gen codigo_parvulo = institution_code if dup>0 & _merge == 1
+sort school_name geo_comuna geo_region n_sede codigo_parvulo
+bys school_name geo_comuna geo_region n_sede: replace codigo_parvulo = codigo_parvulo[_n+1] if _n==1
+
+bys school_name geo_comuna geo_region n_sede: replace sector = sector[_n+1] if _n==1
+bys school_name geo_comuna geo_region n_sede: replace urban = urban[_n+1] if _n==1
+
+bys school_name n_sede geo_region geo_comuna: drop if _merge==1&dup>0&cuantos_dup==2
+
+* cuantos duplicados quedan
+duplicates report school_name n_sede geo_comuna geo_region
+/*
+--------------------------------------
+   Copies | Observations       Surplus
+----------+---------------------------
+        1 |        17071             0
+        2 |           82            41
+        4 |            4             3
+       16 |           16            15
+--------------------------------------
+*/
+
+drop _merge
+gen updated_withdup = . 
+foreach codigo in 10207001 11201050 13102019 13106021 13106028 13108003 13110026 13110030 13111021 13112032 13118006 13121022 13121028 13122017 13124034 13201088 13301049 13302016 13501035 {
+	replace updated_withdup = 1 if codigo_parvulo=="`codigo'"
+	}
+gen updated_nodup = .
+foreach codigo in 10207001 11201050 13102019 13106021 13106028 13108003 13110026 13110030 13111021 13112032 13118006 13121022 13121028 13122017 13124034 13201088 13301049 13302016 13501035 {
+	replace updated_nodup = 1 if institution_code=="`codigo'"&updated_withdup==.
+	}
+	
+export excel "/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@consiliumbots.com/random_data/bases andrea_marcy/callcenter/para_callcenter_20220530.xlsx", replace 
+
+
+keep institution_code codigo_parvulo school_name
+keep if codigo_parvulo!=""
+drop if school_name==""
+save "/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@consiliumbots.com/random_data/crosswalk_rbd_jardines.dta", replace 
