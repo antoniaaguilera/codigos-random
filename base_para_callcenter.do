@@ -366,15 +366,16 @@ sort school_name geo_comuna geo_region
 br campus_code institution_code school_name geo* _merge if dup>0
 
 * cuantos duplicados hay 
-bys school_name geo_region geo_comuna n_sede: egen cuantos_dup=count(campus_code) if dup>0
-gen codigo_parvulo = institution_code if dup>0 & _merge == 1
+gen codigo_parvulo = institution_code if dup==1 & _merge == 1
 sort school_name geo_comuna geo_region n_sede codigo_parvulo
 bys school_name geo_comuna geo_region n_sede: replace codigo_parvulo = codigo_parvulo[_n+1] if _n==1
 
 bys school_name geo_comuna geo_region n_sede: replace sector = sector[_n+1] if _n==1
 bys school_name geo_comuna geo_region n_sede: replace urban = urban[_n+1] if _n==1
 
-bys school_name n_sede geo_region geo_comuna: drop if _merge==1&dup>0&cuantos_dup==2
+* flag los que hay que ir botando 
+bys school_name n_sede geo_region geo_comuna: gen flag = 1 if _merge==1&dup==1
+drop if flag == 1
 
 * cuantos duplicados quedan
 duplicates report school_name n_sede geo_comuna geo_region
@@ -389,7 +390,24 @@ duplicates report school_name n_sede geo_comuna geo_region
 --------------------------------------
 */
 
-drop _merge
+* cuantos duplicados quedan
+duplicates tag school_name n_sede latitud longitud, g(dup2)
+br campus_code institution_code school_name geo* _merge latitud longitud if dup2==1 //sólo puedo arreglar cuando hay 1 duplicado (un rbd y un codigo parvulo)
+
+replace codigo_parvulo = institution_code if dup2==1 &_merge==1&latitud!=.
+
+gsort school_name geo_comuna geo_region n_sede latitud longitud codigo_parvulo -_merge
+bys school_name geo_comuna geo_region n_sede: replace codigo_parvulo = codigo_parvulo[_n+1] if dup2>0 & codigo_parvulo==""
+
+bys school_name geo_comuna geo_region n_sede: replace sector = sector[_n+1] if _n==1
+bys school_name geo_comuna geo_region n_sede: replace urban = urban[_n+1] if _n==1
+bys school_name geo_comuna geo_region n_sede: replace phone_ofprincipal = phone_ofprincipal[_n+1] if _n==1
+
+* flag los que hay que ir botando 
+bys school_name n_sede geo_region geo_comuna: replace flag = 1 if _merge==1&dup2==1
+drop if flag == 1
+ 
+drop _merge flag
 gen updated_withdup = . 
 foreach codigo in 10207001 11201050 13102019 13106021 13106028 13108003 13110026 13110030 13111021 13112032 13118006 13121022 13121028 13122017 13124034 13201088 13301049 13302016 13501035 {
 	replace updated_withdup = 1 if codigo_parvulo=="`codigo'"
@@ -399,10 +417,41 @@ foreach codigo in 10207001 11201050 13102019 13106021 13106028 13108003 13110026
 	replace updated_nodup = 1 if institution_code=="`codigo'"&updated_withdup==.
 	}
 	
-export excel "/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@consiliumbots.com/random_data/bases andrea_marcy/callcenter/para_callcenter_20220530.xlsx", replace 
+export excel "$pathRandom/bases andrea_marcy/callcenter/para_callcenter_20220530.xlsx", replace first(var)
+ 
+keep institution_code campus_code codigo_parvulo school_name geo_region_name geo_comuna_name
+ 
+ 
+* --- casos especiales (que voy arreglando a medida que voy haciendo los updates )
+replace codigo_parvulo = "13102019" if institution_code == "41404" //manutara
+replace codigo_parvulo = "13118006" if institution_code == "35618" //reina de la paz
+replace codigo_parvulo = "13121028" if institution_code == "34531" //salvador allende
+replace codigo_parvulo = "13301049" if institution_code == "32028" //sembrando sueños 
+replace codigo_parvulo = "13124034" if institution_code == "41785" //Awka Pillmayken
+replace codigo_parvulo = "13106028" if institution_code == "41434" //coyhaique estación central
+replace codigo_parvulo = "13501061" if institution_code == "36051" //sonrisitas melipilla
+replace codigo_parvulo = "13603010" if institution_code == "36104" //harawy isla de maipo
+replace codigo_parvulo = "10101064" if institution_code == "35110" //Ayekantun puerto montt
+replace codigo_parvulo = "13105014" if institution_code == "35448" //mis primeros pasos el bosque 
+replace codigo_parvulo = "13107013" if institution_code == "31354" //rayito de luna huechuraba 
+replace codigo_parvulo = "13110045" if institution_code == "41441" //puerto eden la florida 
+replace codigo_parvulo = "13116019" if institution_code == "32072" //munay lo espejo 
+replace codigo_parvulo = "13125025" if institution_code == "32076" //renaciendo sueños quilicura 
+replace codigo_parvulo = "13404039" if institution_code == "41886" //las lilas paine 
 
-
-keep institution_code codigo_parvulo school_name
 keep if codigo_parvulo!=""
 drop if school_name==""
-save "/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@consiliumbots.com/random_data/crosswalk_rbd_jardines.dta", replace 
+rename institution_code rbd
+save "$pathDataExplorador/inputs/Hunters/crosswalk_rbd_jardines.dta", replace 
+
+/*
+buscar _merge==2 y hacer calzar nombre y comuna, si
+solo hay 2 EE, es ese, reemplazar institution_code
+
+*/
+
+
+
+
+
+
