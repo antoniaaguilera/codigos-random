@@ -356,7 +356,7 @@ tostring institution_code campus_code, replace
 tempfile aux 
 save `aux', replace 
 
-import excel "/Users/antoniaaguilera/ConsiliumBots Dropbox/antoniaaguilera@consiliumbots.com/random_data/bases andrea_marcy/callcenter/para_callcenter_20220519.xlsx", clear first
+import excel "$pathRandom/bases andrea_marcy/callcenter/para_callcenter_20220519.xlsx", clear first
 *ver duplicados por nombre
 replace school_name = ustrtitle(school_name)
 merge 1:1 campus_code using `aux', keepusing(institution_code)

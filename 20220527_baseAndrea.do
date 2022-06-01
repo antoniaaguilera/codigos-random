@@ -105,7 +105,7 @@ merge 1:1 rbd using `intermedia', nogen
  
 local date = "$S_DATE"
 
-export excel "$pathData/base_hubspot_`date'.xlsx", replace 
+export excel "$pathData/base_hubspot_`date'.xlsx", replace first(variables)
 
 stop
 * --- jardines --- * 
